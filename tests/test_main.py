@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch, MagicMock, mock_open
+from unittest.mock import patch, mock_open
 import sys
 
 # Add src folder to sys.path to allow running python -m unittest tests/test_main.py directly
