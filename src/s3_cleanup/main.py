@@ -52,12 +52,20 @@ def handle_scan(args):
 
     # Prompt interactively for missing arguments
     endpoint = get_required_arg(
-        args.endpoint, "Enter S3 Endpoint URL (e.g. https://ip:port): ", "Endpoint URL is required."
+        args.endpoint,
+        "Enter S3 Endpoint URL (e.g. https://ip:port): ",
+        "Endpoint URL is required.",
     )
-    bucket = get_required_arg(args.bucket, "Enter S3 Bucket Name: ", "Bucket name is required.")
+    bucket = get_required_arg(
+        args.bucket, "Enter S3 Bucket Name: ", "Bucket name is required."
+    )
     prefix = get_arg_with_default(args.prefix, "Enter S3 Folder Prefix", "network/")
-    cutoff_str = get_arg_with_default(args.cutoff, "Enter YYYY-MM-DD Cutoff Date", today_str)
-    workers = int(get_arg_with_default(args.workers, "Enter number of parallel workers", "16"))
+    cutoff_str = get_arg_with_default(
+        args.cutoff, "Enter YYYY-MM-DD Cutoff Date", today_str
+    )
+    workers = int(
+        get_arg_with_default(args.workers, "Enter number of parallel workers", "16")
+    )
 
     # Ensure prefix ends with a slash if not empty
     if prefix and not prefix.endswith("/"):
@@ -88,7 +96,9 @@ def handle_scan(args):
     cutoff = datetime.datetime.strptime(cutoff_str, "%Y-%m-%d").replace(
         tzinfo=datetime.timezone.utc
     )
-    print(f"Cutoff date set to: {cutoff_str} (scanning for objects modified before this date)")
+    print(
+        f"Cutoff date set to: {cutoff_str} (scanning for objects modified before this date)"
+    )
 
     # Helper to scan a folder
     def scan_folder(folder_prefix):
@@ -105,7 +115,9 @@ def handle_scan(args):
                         found_files.append(
                             f"{obj['LastModified'].isoformat()} | {size_mb:.2f} MB | {obj['Key']}\n"
                         )
-            print(f"Folder '{folder_prefix}' finished. Found {len(found_files)} matching files.")
+            print(
+                f"Folder '{folder_prefix}' finished. Found {len(found_files)} matching files."
+            )
             return found_files
         except Exception as e:
             print(f"Error scanning folder '{folder_prefix}': {str(e)}")
@@ -132,13 +144,19 @@ def handle_scan(args):
 # ==========================================
 def handle_usage(args):
     endpoint = get_required_arg(
-        args.endpoint, "Enter S3 Endpoint URL (e.g. https://ip:port): ", "Endpoint URL is required."
+        args.endpoint,
+        "Enter S3 Endpoint URL (e.g. https://ip:port): ",
+        "Endpoint URL is required.",
     )
-    bucket = get_required_arg(args.bucket, "Enter S3 Bucket Name: ", "Bucket name is required.")
+    bucket = get_required_arg(
+        args.bucket, "Enter S3 Bucket Name: ", "Bucket name is required."
+    )
     prefix = get_arg_with_default(
         args.prefix, "Enter S3 Folder Prefix (leave blank for entire bucket)", ""
     )
-    workers = int(get_arg_with_default(args.workers, "Enter number of parallel workers", "16"))
+    workers = int(
+        get_arg_with_default(args.workers, "Enter number of parallel workers", "16")
+    )
 
     s3_client = get_s3_client(endpoint)
 
@@ -277,9 +295,13 @@ def handle_summary(args):
 def handle_delete(args):
     # Prompt interactively if required args are missing
     endpoint = get_required_arg(
-        args.endpoint, "Enter S3 Endpoint URL (e.g. https://ip:port): ", "Endpoint URL is required."
+        args.endpoint,
+        "Enter S3 Endpoint URL (e.g. https://ip:port): ",
+        "Endpoint URL is required.",
     )
-    bucket = get_required_arg(args.bucket, "Enter S3 Bucket Name: ", "Bucket name is required.")
+    bucket = get_required_arg(
+        args.bucket, "Enter S3 Bucket Name: ", "Bucket name is required."
+    )
 
     header, data = parse_list_file(args.input)
     s3_client = get_s3_client(endpoint)
@@ -303,7 +325,9 @@ def handle_delete(args):
         print("No files to delete.")
         return
 
-    print(f"\nSelected {len(selected_keys):,} files totaling {actual_gb:.2f} GB for deletion.")
+    print(
+        f"\nSelected {len(selected_keys):,} files totaling {actual_gb:.2f} GB for deletion."
+    )
 
     if args.dry_run:
         print("[DRY RUN] No files were deleted.")
@@ -346,7 +370,9 @@ def main():
     # ------------------
     # Scan parser
     # ------------------
-    scan_parser = subparsers.add_parser("scan", help="Scan S3 prefix dynamically and generate list")
+    scan_parser = subparsers.add_parser(
+        "scan", help="Scan S3 prefix dynamically and generate list"
+    )
     scan_parser.add_argument(
         "-e",
         "--endpoint",
@@ -358,9 +384,14 @@ def main():
         "-p", "--prefix", default=None, help="Target directory prefix (e.g. 'network/')"
     )
     scan_parser.add_argument(
-        "-c", "--cutoff", default=None, help="YYYY-MM-DD date filter (older than this date)"
+        "-c",
+        "--cutoff",
+        default=None,
+        help="YYYY-MM-DD date filter (older than this date)",
     )
-    scan_parser.add_argument("-o", "--output", default="old_files_list.txt", help="Output file path")
+    scan_parser.add_argument(
+        "-o", "--output", default="old_files_list.txt", help="Output file path"
+    )
     scan_parser.add_argument(
         "-w", "--workers", default=None, help="Number of concurrent listing workers"
     )
@@ -376,13 +407,17 @@ def main():
     usage_parser.add_argument(
         "-p", "--prefix", default=None, help="Folder prefix (blank for entire bucket)"
     )
-    usage_parser.add_argument("-w", "--workers", default=None, help="Number of parallel workers")
+    usage_parser.add_argument(
+        "-w", "--workers", default=None, help="Number of parallel workers"
+    )
 
     # ------------------
     # Sort parser
     # ------------------
     sort_parser = subparsers.add_parser("sort", help="Sort the list file")
-    sort_parser.add_argument("-i", "--input", default="old_files_list.txt", help="Input file path")
+    sort_parser.add_argument(
+        "-i", "--input", default="old_files_list.txt", help="Input file path"
+    )
     sort_parser.add_argument(
         "-o", "--output", default="date_sorted_old_files.txt", help="Output file path"
     )
@@ -390,7 +425,10 @@ def main():
         "-by", choices=["date", "size"], default="date", help="Field to sort by"
     )
     sort_parser.add_argument(
-        "-r", "--reverse", action="store_true", help="Reverse sorting (e.g. descending order)"
+        "-r",
+        "--reverse",
+        action="store_true",
+        help="Reverse sorting (e.g. descending order)",
     )
 
     # ------------------
