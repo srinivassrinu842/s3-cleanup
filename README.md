@@ -6,83 +6,109 @@ This tool is optimized for massive buckets (millions of keys, e.g., Loki chunk s
 
 ---
 
-## Key Features
+## Repository Structure
 
-*   ⚡ **Dynamic Prefix Scanning**: Automatically discovers first-level folders using S3 `Delimiter='/'` before querying, allowing parallelization across subdirectories.
-*   🚀 **Multi-threaded Listing**: Utilizes a Python `ThreadPoolExecutor` to download and scan chunks concurrently.
-*   🗑️ **Fast Batch Deletions**: Deletes files in blocks of 1,000 objects per API call using S3 `delete_objects`.
-*   💬 **Interactive Shell Prompts**: If any parameter is omitted from the CLI commands, the script prompts you interactively with sensible defaults.
-*   📦 **Stand-alone Dependency**: Only requires `boto3`.
-
----
-
-## Prerequisites
-
-Ensure you have Python 3 and the AWS SDK (`boto3`) installed:
-
-```bash
-pip install boto3
+The project conforms to standard Python packaging layouts:
+```text
+s3_cleanup/
+├── setup.py               # Package metadata and entry points
+├── requirements.txt       # Production dependencies
+├── requirements-dev.txt   # Testing, formatting, and linting tools
+├── README.md              # Documentation
+├── src/                   # Package source code
+│   └── s3_cleanup/
+│       ├── __init__.py    # Versioning
+│       └── main.py        # CLI entry point logic
+└── tests/                 # Unit tests
+    ├── __init__.py
+    └── test_main.py       # Test cases
 ```
 
-Ensure your credentials or credentials profiles are set up via standard AWS environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`) or config files.
+---
+
+## Prerequisites & Installation
+
+Ensure you have Python 3.9+ and credentials configured (e.g. standard environment variables `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`).
+
+### 1. Create a Virtual Environment (Optional but recommended)
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+### 2. Install Dependencies
+
+* **For general use**:
+  ```bash
+  pip install -r requirements.txt
+  ```
+* **For development and testing**:
+  ```bash
+  pip install -r requirements-dev.txt
+  ```
+
+### 3. Install the Command Line Executable
+Run the setup script in editable mode to register the `s3-cleanup` CLI shortcut globally inside your active virtual environment:
+```bash
+pip install -e .
+```
+Verify the installation works:
+```bash
+s3-cleanup --help
+```
 
 ---
 
-## Installation
+## Subcommands & Options
 
-1. Make the script executable:
-   ```bash
-   chmod +x s3_cleanup.py
-   ```
+You can invoke the utility using either `s3-cleanup` (if installed via pip) or directly via python:
+```bash
+# Executable shortcut
+s3-cleanup [command] [args]
 
-2. Run the help command to confirm installation:
-   ```bash
-   ./s3_cleanup.py --help
-   ```
+# Direct python runner
+python3 src/s3_cleanup/main.py [command] [args]
+```
 
----
-
-## Commands & Subcommands
-
-### 1. `usage` (Bucket Space Analysis)
+### 1. `usage` (Bucket Storage Estimation)
 Quickly calculates the object count and cumulative storage size of the entire bucket or a specific subfolder.
 
 ```bash
-# Standard command-line syntax:
-./s3_cleanup.py usage -e <endpoint> -b <bucket> -p <folder_prefix> -w <workers>
+# Command line syntax:
+s3-cleanup usage -e <endpoint> -b <bucket> -p <folder_prefix> -w <workers>
 
-# Interactive mode (prompts for missing options):
-./s3_cleanup.py usage
+# Interactive mode (will prompt you for missing options):
+s3-cleanup usage
 ```
 
-### 2. `scan` (Identify Old Files)
+### 2. `scan` (Filter and Export Metadata)
 Discovers and lists all files older than a specified YYYY-MM-DD cutoff date. Generates a metadata list file containing `LastModified | Size (MB) | Object Key`.
 
 ```bash
 # Run scan filtering files older than July 1, 2026:
-./s3_cleanup.py scan -e "https://oceanstor.endpoint" -b "my-bucket" -p "network/" -c "2026-07-01" -o "old_files_list.txt" -w 16
+s3-cleanup scan -e "https://oceanstor.endpoint" -b "my-bucket" -p "network/" -c "2026-07-01" -o "old_files_list.txt" -w 16
 ```
 
-*   `-c, --cutoff`: The date threshold. Defaults dynamically to **today's date**.
+*   `-c, --cutoff`: The date threshold (default: **today's date**).
 *   `-o, --output`: Where to save the scanned metadata (default: `old_files_list.txt`).
 *   `-w, --workers`: Maximum parallel listing workers (default: `16`).
 
-### 3. `sort` (Order Scan Output)
+### 3. `sort` (Offline Sort)
 Sorts the generated text list file by either `date` (chronological) or `size` (numerical) without talking to S3.
 
 ```bash
 # Sort by Date (Oldest first):
-./s3_cleanup.py sort -i old_files_list.txt -o date_sorted.txt -by date
+s3-cleanup sort -i old_files_list.txt -o date_sorted.txt -by date
 
 # Sort by Size (Largest first):
-./s3_cleanup.py sort -i old_files_list.txt -o size_sorted.txt -by size --reverse
+s3-cleanup sort -i old_files_list.txt -o size_sorted.txt -by size --reverse
 ```
 
 ### 4. `summary` (Local Summary Report)
-Reads any list file generated during the `scan` phase and prints a quick report showing total count and size (in MB, GB, and TB) offline.
+Reads any list file generated during the `scan` phase and prints a quick summary showing total count and size (in MB, GB, and TB) offline.
 
 ```bash
-./s3_cleanup.py summary -i date_sorted.txt
+s3-cleanup summary -i date_sorted.txt
 ```
 
 ### 5. `delete` (Targeted Cleanup)
@@ -90,7 +116,7 @@ Safely deletes objects listed in your sorted file, starting from the top, up to 
 
 ```bash
 # Delete the oldest 100 GB of objects:
-./s3_cleanup.py delete -e "https://oceanstor.endpoint" -b "my-bucket" -i date_sorted.txt -l 100.0
+s3-cleanup delete -e "https://oceanstor.endpoint" -b "my-bucket" -i date_sorted.txt -l 100.0
 ```
 
 *   `-l, --limit-gb`: Stop deleting once this cumulative limit is reached (default: `100.0` GB).
@@ -98,21 +124,25 @@ Safely deletes objects listed in your sorted file, starting from the top, up to 
 
 ---
 
-## Workflow Example: Freeing up 100 GB
+## Code Quality & Testing
 
-1. **Scan the bucket** for files older than July 1st, saving results to `network_files.txt`:
-   ```bash
-   ./s3_cleanup.py scan -e "https://oceanstor.endpoint" -b "my-bucket" -p "network/" -c "2026-07-01" -o "network_files.txt"
-   ```
-2. **Sort by Date** to put the oldest files at the top of the list:
-   ```bash
-   ./s3_cleanup.py sort -i network_files.txt -o sorted_by_date.txt -by date
-   ```
-3. **Verify the plan** using a dry run:
-   ```bash
-   ./s3_cleanup.py delete -e "https://oceanstor.endpoint" -b "my-bucket" -i sorted_by_date.txt -l 100 --dry-run
-   ```
-4. **Execute the deletion** (will prompt you with a final `yes/no` confirmation):
-   ```bash
-   ./s3_cleanup.py delete -e "https://oceanstor.endpoint" -b "my-bucket" -i sorted_by_date.txt -l 100
-   ```
+### Running Tests
+To run unit tests locally:
+```bash
+# Using standard Python unittest
+python3 -m unittest discover -s tests -p 'test_*.py'
+
+# Using pytest
+pytest tests/
+```
+
+### Formatting & Linting
+The project uses `black` and `ruff` for code styling:
+```bash
+# Auto-format codebase
+black src/ tests/
+
+# Lint checks
+ruff check src/ tests/
+```
+*(Note: Pushing code to GitHub triggers a CI workflow that automatically formats changes using Black and runs lint validation checks).*
